@@ -1,0 +1,80 @@
+﻿@model WebsocketChat.Client.Models.WebsocketChatModel
+@{
+    ViewData["Title"] = "Чат";
+}
+
+<div class="chat">
+    <div class="chat-container">
+        <div class="conversation">
+            <div id="messages" class="conversation-container">
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="text-center text-lg-start bg-light text-muted" id="mainPageFooter">
+    <section class="">
+
+        <form id="chat-form" class="conversation-compose">
+            <input class="input-msg" id="message-input" name="input"
+                   placeholder="Введите сообщение" autocomplete="off" required></input>
+            <button type="submit" class="send">
+                <div class="circle">
+                    <i class="far fa-paper-plane"></i>
+                </div>
+            </button>
+        </form>
+    </section>
+</footer>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            const wsUrl = "ws://localhost:5000/ws"; //$('body').data('ws-url');
+
+            if (!("WebSocket" in window)) {
+                showToast("WebSocket NOT supported by your Browser!");
+                return;
+            }
+
+            const socket = new WebSocket(wsUrl);
+
+            socket.onopen = function (event) {
+                let handshakeMessage = createHandshakeMessage('@Model.UserId', '@Model.WebsocketToken');
+
+                socket.send(JSON.stringify(handshakeMessage));
+            };
+
+            socket.onmessage = function (event) {
+                var receivedMessage = JSON.parse(event.data);
+                appendMessage(RECEIVED, receivedMessage.Message, receivedMessage.SenderNickname);
+            };
+
+            socket.onerror = function (error) {
+                let errorMessage = 'WebSocket Error: ' + error;
+                console.error(errorMessage)
+                showToast(errorMessage)
+            };
+
+            socket.onclose = function (event) {
+                console.log(`WebSocket closed. Clean: ${event.wasClean}, Code: ${event.code}, Reason: ${event.reason}`);
+            };
+
+            $('#chat-form').submit(function (event) {
+                event.preventDefault();
+                sendMessage(socket);
+            });
+
+            function sendMessage(socket) {
+                let messageInput = document.getElementById("message-input");
+                let message = createChatMessage('@Model.UserId', '@Model.WebsocketToken', messageInput.value);
+
+                socket.send(JSON.stringify(message));
+
+                appendMessage(SENT, messageInput.value);
+
+                messageInput.value = '';
+            }
+        });
+    </script>
+}
